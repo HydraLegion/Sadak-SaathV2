@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(pip install *)",
+      "Bash(npm run *)",
+      "Bash(curl *)",
+      "Bash(Get-Process -Name \"node\" -ErrorAction SilentlyContinue)",
+      "Bash(Select-Object -First 1)",
+      "Bash(Format-List Id,ProcessName)",
+      "Bash(npx next *)",
+      "Bash(pkill -f \"next\")",
+      "Bash(Start-Sleep 5)",
+      "Bash(Get-Content \"C:\\\\Users\\\\mohit\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--CODE-0000000\\\\ee7431e1-a5cc-4a9f-b8c7-45ab78435950\\\\tasks\\\\bm1fd4qa6.output\" -Tail 15)",
+      "PowerShell(Start-Process -FilePath \"npm\" -ArgumentList \"run\", \"dev\" -WorkingDirectory \"D:\\\\CODE\\\\0000000\\\\frontend\" -NoNewWindow -PassThru)",
+      "Bash(taskkill /F /IM node.exe)",
+      "Bash(netstat -ano)",
+      "Bash(Get-ChildItem -Path \"d:\\\\CODE\\\\Sadak_SaathiV2\" -Force -ErrorAction SilentlyContinue)",
+      "Bash(Select-Object Name, Mode)",
+      "Bash(mkdir -p \"d:/CODE/Sadak_SaathiV2/frontend/components/ui\" \"d:/CODE/Sadak_SaathiV2/frontend/components/layout\" \"d:/CODE/Sadak_SaathiV2/frontend/components/dashboard\" \"d:/CODE/Sadak_SaathiV2/frontend/stores\" \"d:/CODE/Sadak_SaathiV2/frontend/hooks\" \"d:/CODE/Sadak_SaathiV2/frontend/lib\" 2>/dev/null; echo \"Directories created\")",
+      "Bash(npx tsc *)",
+      "WebFetch(domain:minimax-algeng-chat-tts-us.oss-us-east-1.aliyuncs.com)",
+      "Bash(Select-Object -First 20)",
+      "Bash(Select-Object -First 30)",
+      "Bash(Get-Content \"C:\\\\Users\\\\mohit\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--CODE-Sadak-SaathiV2\\\\12d60f8e-fd7a-4d4b-9b27-f6d22b49cbdb\\\\tasks\\\\bg4c0pjgv.output\" -Tail 15)"
+    ],
+    "additionalDirectories": [
+      "d:\\CODE\\Sadak_SaathiV2\\frontend\\components\\ui"
+    ]
+  }
+}

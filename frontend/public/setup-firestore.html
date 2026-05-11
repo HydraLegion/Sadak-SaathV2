@@ -1,0 +1,156 @@
+/**
+ * Sadak Saathi — Browser-Based Firestore Setup
+ *
+ * Open this file in a browser to initialize Firestore collections.
+ * Go to Firebase Console -> Project Settings -> Web App -> Config
+ * and copy the firebaseConfig values below.
+ */
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sadak Saathi — Firestore Setup</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; padding: 20px; }
+    .container { max-width: 800px; margin: 0 auto; background: white; border-radius: 12px; padding: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    h1 { color: #333; margin-bottom: 10px; }
+    h2 { color: #666; font-size: 16px; font-weight: normal; margin-bottom: 30px; }
+    .status { padding: 15px; border-radius: 8px; margin: 20px 0; }
+    .status.success { background: #d4edda; color: #155724; }
+    .status.error { background: #f8d7da; color: #721c24; }
+    .status.pending { background: #fff3cd; color: #856404; }
+    .progress { margin: 20px 0; }
+    .progress-item { display: flex; align-items: center; padding: 10px; border-bottom: 1px solid #eee; }
+    .progress-item:last-child { border: none; }
+    .progress-item .icon { margin-right: 10px; font-size: 18px; }
+    .progress-item .pending .icon { color: #ffc107; }
+    .progress-item .success .icon { color: #28a745; }
+    .progress-item .error .icon { color: #dc3545; }
+    button { background: #3366ff; color: white; border: none; padding: 15px 30px; border-radius: 8px; font-size: 16px; cursor: pointer; margin-top: 20px; }
+    button:hover { background: #2546d9; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    pre { background: #f8f9fa; padding: 15px; border-radius: 8px; overflow-x: auto; font-size: 12px; margin: 20px 0; }
+    code { background: #f8f9fa; padding: 2px 6px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🛣️ Sadak Saathi — Firestore Setup</h1>
+    <h2>Initialize collections for the pothole detection platform</h2>
+
+    <button id="setupBtn" onclick="runSetup()">Initialize Firestore</button>
+
+    <div id="progress" class="progress" style="display:none;"></div>
+    <div id="result" class="status pending" style="display:none;"></div>
+
+    <h3 style="margin-top:30px;color:#333;">Required Firestore Rules (paste in Firebase Console)</h3>
+    <pre>rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}</pre>
+
+    <script type="module">
+      // Firebase SDK imports (use CDN for browser)
+      import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+      import { getFirestore, doc, setDoc, serverTimestamp, collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+      // Your Firebase config
+      const firebaseConfig = {
+        apiKey: "AIzaSyAJaCk7n1_gkEAYJiT7_Pfy_7iqsHP7Cu4",
+        authDomain: "bsp-excelviewer.firebaseapp.com",
+        projectId: "bsp-excelviewer",
+        storageBucket: "bsp-excelviewer.firebasestorage.app",
+        messagingSenderId: "601994430473",
+        appId: "1:601994430473:web:5588669db43df8ef8c10d8"
+      };
+
+      // Initialize Firebase
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+
+      // Sample data
+      const jurisdictions = [
+        { code: 'DL-Central', name: 'Central Delhi', type: 'zone', center: { lat: 28.6289, lng: 77.2195 }, parentId: 'delhi', departmentId: 'PWD-DL', isActive: true },
+        { code: 'DL-North', name: 'North Delhi', type: 'zone', center: { lat: 28.7189, lng: 77.2067 }, parentId: 'delhi', departmentId: 'PWD-DL', isActive: true },
+        { code: 'DL-South', name: 'South Delhi', type: 'zone', center: { lat: 28.5355, lng: 77.2500 }, parentId: 'delhi', departmentId: 'PWD-DL', isActive: true },
+      ];
+
+      const departments = [
+        { code: 'PWD-DL', name: 'Public Works Department', jurisdictionId: 'delhi', contactEmail: 'pwd-delhi@gov.in', contactPhone: '+91-11-23456789', isActive: true },
+      ];
+
+      const potholes = [
+        { id: 'pothole-0001', lat: 28.6139, lng: 77.209, severity: 'critical', confidence: 0.94, status: 'pending', jurisdictionId: 'DL-Central', address: 'MG Road, Connaught Place' },
+        { id: 'pothole-0002', lat: 28.6189, lng: 77.214, severity: 'high', confidence: 0.87, status: 'verified', jurisdictionId: 'DL-Central', address: 'Barakhamba Road' },
+        { id: 'pothole-0003', lat: 28.6239, lng: 77.219, severity: 'medium', confidence: 0.76, status: 'in_progress', jurisdictionId: 'DL-Central', address: 'Janpath' },
+        { id: 'pothole-0004', lat: 28.6339, lng: 77.224, severity: 'low', confidence: 0.68, status: 'resolved', jurisdictionId: 'DL-Central', address: 'Sansad Marg' },
+      ];
+
+      async function runSetup() {
+        const btn = document.getElementById('setupBtn');
+        const progress = document.getElementById('progress');
+        const result = document.getElementById('result');
+
+        btn.disabled = true;
+        btn.textContent = 'Setting up...';
+        progress.style.display = 'block';
+        result.style.display = 'none';
+        progress.innerHTML = '';
+
+        const steps = [
+          { name: 'Creating Jurisdictions', items: jurisdictions, collection: 'jurisdictions' },
+          { name: 'Creating Departments', items: departments, collection: 'departments' },
+          { name: 'Creating Sample Potholes', items: potholes, collection: 'potholes' },
+        ];
+
+        let successCount = 0;
+        let errorCount = 0;
+
+        for (const step of steps) {
+          // Add step header
+          progress.innerHTML += `<div class="progress-item pending"><div class="icon">⏳</div><div><strong>${step.name}</strong></div></div>`;
+          const stepIndex = progress.children.length - 1;
+
+          for (const item of step.items) {
+            const id = item.code || item.id;
+            try {
+              await setDoc(doc(db, step.collection, id), {
+                ...item,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+              });
+              successCount++;
+              progress.innerHTML += `<div class="progress-item success"><div class="icon">✓</div><div>${id}</div></div>`;
+            } catch (error) {
+              errorCount++;
+              progress.innerHTML += `<div class="progress-item error"><div class="icon">✗</div><div>${id}: ${error.message}</div></div>`;
+            }
+          }
+        }
+
+        // Show result
+        result.style.display = 'block';
+        result.className = errorCount > 0 ? 'status error' : 'status success';
+
+        if (errorCount > 0) {
+          result.innerHTML = `<strong>Completed with ${errorCount} errors</strong><br>${successCount} documents created successfully. Check errors above.`;
+        } else {
+          result.innerHTML = `<strong>Setup Complete!</strong><br>${successCount} documents created successfully.<br><br>Now go to <a href="http://localhost:3001">http://localhost:3001</a> to see the app.`;
+        }
+
+        btn.textContent = 'Setup Complete';
+      }
+
+      // Make runSetup available globally
+      window.runSetup = runSetup;
+    </script>
+  </div>
+</body>
+</html>
