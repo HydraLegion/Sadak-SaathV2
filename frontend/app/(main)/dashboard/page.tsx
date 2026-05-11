@@ -161,7 +161,7 @@ export default function DashboardPage() {
     { label: 'AI Verified', value: aiVerified || Math.round((totalPotholes || 156) * 0.78), icon: CheckCircle, color: 'from-green-500 to-emerald-500', trend: '+8%', trendUp: true, glow: 'shadow-green-500/20' },
     { label: 'Critical Alerts', value: criticalCount || 12, icon: Ambulance, color: 'from-blue-500 to-cyan-500', trend: '+15%', trendUp: true, glow: 'shadow-blue-500/20' },
     { label: 'Resolution Rate', value: `${resolutionRate || 94}%`, icon: Target, color: 'from-purple-500 to-pink-500', trend: '+5%', trendUp: true, glow: 'shadow-purple-500/20' },
-    { label: 'Active Zones', value: Math.max(new Set(potholes.map(p => p.jurisdiction))).size || 12, icon: MapPin, color: 'from-yellow-500 to-orange-500', trend: '+3', trendUp: true, glow: 'shadow-yellow-500/20' },
+    { label: 'Active Zones', value: new Set(potholes.map(p => p.jurisdiction)).size || 12, icon: MapPin, color: 'from-yellow-500 to-orange-500', trend: '+3', trendUp: true, glow: 'shadow-yellow-500/20' },
     { label: 'Avg Response', value: '4.2 min', icon: Clock, color: 'from-indigo-500 to-purple-500', trend: '-23%', trendUp: false, glow: 'shadow-indigo-500/20' },
   ]
 
