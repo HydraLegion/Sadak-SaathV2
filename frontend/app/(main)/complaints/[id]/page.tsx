@@ -60,7 +60,7 @@ export default function ComplaintDetailPage() {
           if (data.potholeId) {
             const potholeSnap = await getDoc(doc(db, 'potholes', data.potholeId))
             if (potholeSnap.exists()) {
-              setPothole({ id: potholeSnap.id, ...potholeSnap.data() })
+              setPothole({ id: potholeSnap.id, ...potholeSnap.data() } as Pothole)
             }
           }
         }
