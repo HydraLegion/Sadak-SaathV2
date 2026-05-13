@@ -21,7 +21,7 @@ import {
 } from 'lucide-react'
 
 type AuthStep = 'phone' | 'validating' | 'access_denied' | 'otp' | 'authorizing' | 'success'
-type AccessDeniedReason = 'not_authorized' | 'inactive' | 'invalid_role' | 'error' | 'pending_approval' | 'not_found'
+type AccessDeniedReason = 'not_authorized' | 'inactive' | 'invalid_role' | 'error' | 'pending_approval' | 'not_found' | 'demo'
 
 interface OfficerInfo {
   name: string
