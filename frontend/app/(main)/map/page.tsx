@@ -1,5 +1,6 @@
 'use client'
 
+import { useMap } from 'react-leaflet'
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
@@ -29,6 +30,15 @@ const severityColors: Record<PotholeSeverity, string> = {
   high: '#ea580c',
   medium: '#ca8a04',
   low: '#65a30d'
+}
+function MapUpdater({ setMapInstance }: { setMapInstance: (map: any) => void }) {
+  const map = useMap()
+
+  useEffect(() => {
+    setMapInstance(map)
+  }, [map, setMapInstance])
+
+  return null
 }
 
 // Fallback demo potholes for Raipur area when Firebase is unavailable
