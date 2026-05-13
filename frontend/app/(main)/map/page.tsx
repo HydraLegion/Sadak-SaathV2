@@ -245,7 +245,7 @@ function MapContent() {
         </div>
 
         <div className={cn('h-full rounded-lg border overflow-hidden', fullscreen ? 'h-[calc(100vh-2rem)]' : 'h-[600px]')}>
-          <MapContainer center={[21.2514, 81.6296]} zoom={zoom || 13} className="h-full w-full" whenReady={(map) => setMapInstance(map)} >
+          <MapContainer center={[21.2514, 81.6296]} zoom={zoom || 13} className="h-full w-full" whenReady={() => {}} >
             <MapUpdater setMapInstance={setMapInstance} />
             <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             {!showHeatmap && filteredPotholes.map((pothole) => (
