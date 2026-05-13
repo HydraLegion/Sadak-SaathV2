@@ -3,8 +3,13 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { Shield, AlertTriangle, Building, Lock, User, Mail, Phone, FileText } from 'lucide-react'
 
-interface AccessDeniedStateProps {
-  reason?: 'not_authorized' | 'inactive' | 'invalid_role' | 'error' | 'pending_approval' | 'not_found'
+interface AccessDeniedStateProps {reason?: 'error'
+  | 'not_found'
+  | 'inactive'
+  | 'invalid_role'
+  | 'not_authorized'
+  | 'pending_approval'
+  | 'demo'
   officerName?: string
   district?: string
   contactEmail?: string
