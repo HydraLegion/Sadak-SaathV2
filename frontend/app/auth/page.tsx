@@ -48,8 +48,8 @@ export default function AuthPage() {
         phone: '+919876543210',
         displayName: demoRole === 'admin' ? 'Demo Admin' : demoRole === 'officer' ? 'Demo Officer' : 'Demo Citizen',
         role: demoRole as UserRole,
-        jurisdictionId: demoRole === 'citizen' ? null : 'DL-Central',
-        departmentId: demoRole === 'citizen' ? null : 'PWD-DL',
+        jurisdictionId: demoRole === 'citizen' ? null : 'CG-Central',
+        departmentId: demoRole === 'citizen' ? null : 'PWD-CG',
         photoUrl: null,
         language: 'en',
         lastLoginAt: new Date(),
@@ -105,8 +105,8 @@ export default function AuthPage() {
         phone: `+91${phone.replace(/\D/g, '')}`,
         displayName: 'Demo Officer',
         role: 'officer' as UserRole,
-        jurisdictionId: 'DL-Central',
-        departmentId: 'PWD-DL',
+        jurisdictionId: 'CG-Central',
+        departmentId: 'PWD-CG',
         photoUrl: null,
         language: 'en',
         lastLoginAt: new Date(),
@@ -150,8 +150,8 @@ export default function AuthPage() {
         phone: '',
         displayName: email.split('@')[0],
         role: role as UserRole,
-        jurisdictionId: role === 'citizen' ? null : 'DL-Central',
-        departmentId: role === 'citizen' ? null : 'PWD-DL',
+        jurisdictionId: role === 'citizen' ? null : 'CG-Central',
+        departmentId: role === 'citizen' ? null : 'PWD-CG',
         photoUrl: null,
         language: 'en',
         lastLoginAt: new Date(),
@@ -362,7 +362,7 @@ export default function AuthPage() {
           </CardContent>
 
           <CardFooter className="flex flex-col gap-4 text-center text-sm text-muted-foreground">
-            <p>New user? <button className="text-primary hover:underline" onClick={() => router.push('/login')}>Register here</button></p>
+            <p>Use Demo Access to login</p>
           </CardFooter>
         </Card>
 

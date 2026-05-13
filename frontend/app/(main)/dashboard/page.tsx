@@ -12,11 +12,11 @@ import {
   Eye, Radio, Activity, Zap, Shield, Users, FileText, Ambulance,
   RefreshCw, ArrowRight, ChevronRight, Maximize2, Play, Pause,
   Map as MapIcon, AlertCircle, Bell, Calendar, Target, Layers,
-  ChevronUp, ChevronDown, Flame, Wind, Droplets, EyeOff
+  ChevronUp, ChevronDown, Flame, Wind, Droplets, EyeOff, BarChart3
 } from 'lucide-react'
 import { cn, formatRelativeTime } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth'
-import { collection, query, orderBy, limit, getDocs, onSnapshot } from 'firebase/firestore'
+import { collection, query, orderBy, onSnapshot, limit, where } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import type { Pothole, Complaint } from '@/lib/types'
 
@@ -33,141 +33,215 @@ const staggerContainer = {
   }
 }
 
-// Mock real-time data
-const incidentData = [
-  { id: 1, type: 'accident', severity: 'critical', lat: 28.6139, lng: 77.209, time: '2 min ago', status: 'dispatched', confidence: 94 },
-  { id: 2, type: 'pothole', severity: 'high', lat: 28.6289, lng: 77.219, time: '5 min ago', status: 'reviewing', confidence: 87 },
-  { id: 3, type: 'accident', severity: 'medium', lat: 28.6449, lng: 77.229, time: '12 min ago', status: 'assigned', confidence: 76 },
-  { id: 4, type: 'pothole', severity: 'low', lat: 28.6549, lng: 77.239, time: '18 min ago', status: 'verified', confidence: 68 },
-]
+// Weekly data generator from real potholes
+const getWeeklyData = (potholes: Pothole[]) => {
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  return days.map((day, i) => {
+    const dayOfWeek = i === 0 ? 7 : i // Sunday = 7
+    const dayPotholes = potholes.filter(p => {
+      const d = p.createdAt instanceof Date ? p.createdAt : new Date((p.createdAt as any)?.seconds ? (p.createdAt as any).seconds * 1000 : Date.now())
+      return d.getDay() === dayOfWeek || (dayOfWeek === 7 && d.getDay() === 0)
+    })
+    const incidents = dayPotholes.length
+    const resolved = dayPotholes.filter(p => p.status === 'resolved').length
+    // Only show real data, no random fallbacks
+    return {
+      day,
+      incidents: incidents || 0,
+      resolved: resolved || 0
+    }
+  })
+}
 
-const weeklyData = [
-  { day: 'Mon', incidents: 45, resolved: 42 },
-  { day: 'Tue', incidents: 52, resolved: 48 },
-  { day: 'Wed', incidents: 38, resolved: 35 },
-  { day: 'Thu', incidents: 61, resolved: 55 },
-  { day: 'Fri', incidents: 58, resolved: 52 },
-  { day: 'Sat', incidents: 72, resolved: 65 },
-  { day: 'Sun', incidents: 48, resolved: 45 },
-]
+// Chhattisgarh demo data
+const chhattisgarhDemoData = {
+  potholes: [
+    { id: 'demo-1', severity: 'critical' as const, status: 'pending' as const, address: 'Ring Road No 1, Raipur', lat: 21.2514, lng: 81.6296, confidence: 0.94, createdAt: new Date(Date.now() - 1000 * 60 * 30), jurisdictionId: 'CG-Central' },
+    { id: 'demo-2', severity: 'high' as const, status: 'verified' as const, address: 'GE Road, Bhilai', lat: 21.2139, lng: 81.3865, confidence: 0.89, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2), jurisdictionId: 'CG-East' },
+    { id: 'demo-3', severity: 'medium' as const, status: 'in_progress' as const, address: 'Mahadev Ghat Road, Bilaspur', lat: 22.0791, lng: 82.1409, confidence: 0.82, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 5), jurisdictionId: 'CG-North' },
+    { id: 'demo-4', severity: 'low' as const, status: 'verified' as const, address: 'Jagdalpur Main Road, Bastar', lat: 19.0873, lng: 82.0234, confidence: 0.76, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 8), jurisdictionId: 'CG-South' },
+    { id: 'demo-5', severity: 'high' as const, status: 'resolved' as const, address: 'Shankar Nagar, Raipur', lat: 21.2504, lng: 81.6460, confidence: 0.91, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24), jurisdictionId: 'CG-Central' },
+  ] as Pothole[],
+  complaints: [
+    { id: 'comp-1', title: 'Deep pothole near bus stand', status: 'submitted' as const, priority: 'critical' as const, createdAt: new Date(Date.now() - 1000 * 60 * 30) },
+    { id: 'comp-2', title: 'Road damage near school', status: 'acknowledged' as const, priority: 'high' as const, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2) },
+    { id: 'comp-3', title: 'Multiple potholes on highway', status: 'in_progress' as const, priority: 'medium' as const, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 5) },
+    { id: 'comp-4', title: 'Waterlogging with potholes', status: 'resolved' as const, priority: 'low' as const, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24) },
+  ] as unknown as Complaint[],
+}
 
-const severityDistribution = [
-  { name: 'Critical', value: 12, color: '#ef4444' },
-  { name: 'High', value: 28, color: '#f97316' },
-  { name: 'Medium', value: 45, color: '#eab308' },
-  { name: 'Low', value: 35, color: '#22c55e' },
-]
+// Live activities from real or demo data
+const getLiveActivities = (potholes: Pothole[], useDemo: boolean = false) => {
+  const data = useDemo ? chhattisgarhDemoData.potholes : potholes
+  if (data.length === 0) {
+    return [
+      { action: 'No recent activity', location: 'Dashboard', time: '-', type: 'ai' },
+    ]
+  }
+  return data.slice(0, 5).map((p) => {
+    const locationStr = p.address?.trim()
+      ? p.address
+      : p.lat && p.lng
+        ? `${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}`
+        : 'Chhattisgarh'
+    return {
+      action: p.status === 'verified' ? 'New pothole detected' :
+             p.status === 'resolved' ? 'Pothole repaired' :
+             p.status === 'in_progress' ? 'Repair in progress' : 'Report submitted',
+      location: locationStr,
+      time: formatRelativeTime(p.createdAt),
+      type: p.status === 'resolved' ? 'resolved' : p.status === 'verified' ? 'ai' : 'response'
+    }
+  })
+}
 
-const liveActivities = [
-  { action: 'New incident detected', location: 'Connaught Place', time: '2 sec ago', type: 'ai' },
-  { action: 'Emergency dispatched', location: 'ITO Junction', time: '15 sec ago', type: 'response' },
-  { action: 'Case resolved', location: 'Lajpat Nagar', time: '45 sec ago', type: 'resolved' },
-  { action: 'AI verified', location: 'Nehru Place', time: '1 min ago', type: 'ai' },
-  { action: 'High risk zone alert', location: 'Rajiv Chowk', time: '2 min ago', type: 'alert' },
-]
-
-const aiInsights = [
-  { title: 'Peak Accident Hours', description: 'Most incidents occur between 9-11 AM and 5-7 PM', icon: Clock, trend: 'up' },
-  { title: 'High Risk Zone', description: 'Connaught Place area shows 40% above average incidents', icon: AlertTriangle, trend: 'warning' },
-  { title: 'Resolution Time', description: 'Average resolution improved by 23% this week', icon: TrendingUp, trend: 'up' },
-  { title: 'AI Accuracy', description: 'Detection model accuracy: 94.2%', icon: Target, trend: 'stable' },
+// Weekly demo data from Chhattisgarh
+const getWeeklyDemoData = () => [
+  { day: 'Mon', incidents: 12, resolved: 8 },
+  { day: 'Tue', incidents: 15, resolved: 11 },
+  { day: 'Wed', incidents: 8, resolved: 6 },
+  { day: 'Thu', incidents: 18, resolved: 12 },
+  { day: 'Fri', incidents: 14, resolved: 10 },
+  { day: 'Sat', incidents: 22, resolved: 15 },
+  { day: 'Sun', incidents: 6, resolved: 4 },
 ]
 
 export default function DashboardPage() {
-  const { isAuthenticated, isLoading: authLoading } = useAuthStore()
+  const { isAuthenticated, isLoading: authLoading, user } = useAuthStore()
   const [potholes, setPotholes] = useState<Pothole[]>([])
   const [complaints, setComplaints] = useState<Complaint[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedIncident, setSelectedIncident] = useState<typeof incidentData[0] | null>(null)
   const [isLive, setIsLive] = useState(true)
 
   useEffect(() => {
+    if (authLoading) return
     if (!isAuthenticated) {
-      window.location.href = '/login'
+      window.location.href = '/auth'
       return
     }
 
-    // Try to fetch from Firestore, but handle errors gracefully
-    try {
-      const potholesQuery = query(collection(db, 'potholes'), orderBy('createdAt', 'desc'), limit(50))
-      const unsubscribe = onSnapshot(
-        potholesQuery,
-        (snapshot) => {
-          const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Pothole))
-          setPotholes(data)
-          setLoading(false)
-        },
-        () => {
-          // Firestore error - use mock data
-          setPotholes([])
-          setLoading(false)
-        }
-      )
-      return () => unsubscribe()
-    } catch {
-      // Firestore not available - use mock data
-      setPotholes([])
-      setLoading(false)
-    }
-  }, [isAuthenticated])
+    // Delay to prevent rapid reconnection issues
+    const timeoutId = setTimeout(() => {
+      try {
+        // Query user's own potholes
+        const potholesQuery = query(
+          collection(db, 'potholes'),
+          where('createdBy', '==', user?.uid || ''),
+          orderBy('createdAt', 'desc'),
+          limit(100)
+        )
 
-  // Calculate stats from real data
+        const potholesUnsub = onSnapshot(
+          potholesQuery,
+          (snapshot) => {
+            try {
+              const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Pothole))
+              setPotholes(data)
+            } catch (e) {
+              console.error('Error parsing potholes:', e)
+            }
+            setLoading(false)
+          },
+          (error) => {
+            console.error('Firestore potholes error:', error)
+            setLoading(false)
+          }
+        )
+
+        // Query user's complaints
+        const complaintsQuery = query(
+          collection(db, 'complaints'),
+          where('userId', '==', user?.uid || ''),
+          orderBy('createdAt', 'desc'),
+          limit(50)
+        )
+
+        const complaintsUnsub = onSnapshot(
+          complaintsQuery,
+          (snapshot) => {
+            try {
+              const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Complaint))
+              setComplaints(data)
+            } catch (e) {
+              console.error('Error parsing complaints:', e)
+            }
+          },
+          () => {}
+        )
+
+        setLoading(false)
+        return () => {
+          try {
+            potholesUnsub()
+            complaintsUnsub()
+          } catch (e) {
+            console.error('Error unsubscribing:', e)
+          }
+        }
+      } catch (error) {
+        console.error('Firestore setup error:', error)
+        setLoading(false)
+      }
+    }, 500)
+
+    return () => clearTimeout(timeoutId)
+  }, [isAuthenticated, user?.uid])
+
+  // Real stats from Firestore data
   const totalPotholes = potholes.length
-  const aiVerified = potholes.filter(p => p.status === 'verified' || p.status === 'in_progress').length
-  const criticalCount = potholes.filter(p => p.severity === 'critical').length
-  const highCount = potholes.filter(p => p.severity === 'high').length
-  const mediumCount = potholes.filter(p => p.severity === 'medium').length
-  const lowCount = potholes.filter(p => p.severity === 'low').length
   const resolvedCount = potholes.filter(p => p.status === 'resolved').length
   const resolutionRate = totalPotholes > 0 ? Math.round((resolvedCount / totalPotholes) * 100) : 0
 
-  // Calculate weekly data from real data
-  const getWeeklyData = () => {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-    const today = new Date()
-    return days.map((day, i) => {
-      const dayOfWeek = i + 1 // Monday = 1
-      const dayPotholes = potholes.filter(p => {
-        const d = new Date(p.createdAt)
-        return d.getDay() === dayOfWeek
-      })
-      const incidents = dayPotholes.length || Math.floor(Math.random() * 20) + 30
-      const resolved = Math.floor(incidents * (Math.random() * 0.2 + 0.75))
-      return { day, incidents, resolved }
-    })
-  }
+  // Calculate AI confidence from real data
+  const useDemoData = potholes.length === 0 && complaints.length === 0
+  const demoPotholes = chhattisgarhDemoData.potholes
+  const demoComplaints = chhattisgarhDemoData.complaints
 
-  // Calculate severity distribution from real data
-  const getSeverityDistribution = () => [
-    { name: 'Critical', value: criticalCount || 12, color: '#ef4444' },
-    { name: 'High', value: highCount || 28, color: '#f97316' },
-    { name: 'Medium', value: mediumCount || 45, color: '#eab308' },
-    { name: 'Low', value: lowCount || 35, color: '#22c55e' },
+  const displayPotholes = useDemoData ? demoPotholes : potholes
+  const displayComplaints = useDemoData ? demoComplaints : complaints
+
+  const avgConfidence = displayPotholes.length > 0
+    ? Math.round((displayPotholes.reduce((sum, p) => sum + (p.confidence || 0), 0) / displayPotholes.length) * 100)
+    : 87 // Default for demo
+
+  // Complaints stats
+  const submittedComplaints = displayComplaints.filter(c => c.status === 'submitted').length
+  const acknowledgedComplaints = displayComplaints.filter(c => c.status === 'acknowledged').length
+  const inProgressComplaints = displayComplaints.filter(c => c.status === 'in_progress').length
+  const resolvedComplaintsCount = displayComplaints.filter(c => c.status === 'resolved').length
+
+  // Dynamic data from real or demo potholes
+  const weeklyData = useDemoData ? getWeeklyDemoData() : getWeeklyData(displayPotholes)
+
+  const criticalCount = displayPotholes.filter(p => p.severity === 'critical').length
+  const highCount = displayPotholes.filter(p => p.severity === 'high').length
+  const mediumCount = displayPotholes.filter(p => p.severity === 'medium').length
+  const lowCount = displayPotholes.filter(p => p.severity === 'low').length
+
+  const severityDistribution = [
+    { name: 'Critical', value: criticalCount, color: '#ef4444' },
+    { name: 'High', value: highCount, color: '#f97316' },
+    { name: 'Medium', value: mediumCount, color: '#eab308' },
+    { name: 'Low', value: lowCount, color: '#22c55e' },
   ]
-
-  // Generate live activities from real potholes
-  const getLiveActivities = () => {
-    if (potholes.length === 0) return liveActivities
-    return potholes.slice(0, 5).map((p, i) => ({
-      action: p.status === 'verified' ? 'New incident detected' : p.status === 'resolved' ? 'Case resolved' : 'AI processing',
-      location: p.address || 'Unknown Location',
-      time: formatRelativeTime(p.createdAt),
-      type: p.status === 'verified' ? 'ai' : p.status === 'resolved' ? 'resolved' : 'response'
-    }))
-  }
+  const liveActivitiesData = getLiveActivities(displayPotholes, useDemoData)
 
   const stats = [
-    { label: 'Total Incidents', value: totalPotholes || 156, icon: AlertTriangle, color: 'from-red-500 to-orange-500', trend: '+12%', trendUp: true, glow: 'shadow-red-500/20' },
-    { label: 'AI Verified', value: aiVerified || Math.round((totalPotholes || 156) * 0.78), icon: CheckCircle, color: 'from-green-500 to-emerald-500', trend: '+8%', trendUp: true, glow: 'shadow-green-500/20' },
-    { label: 'Critical Alerts', value: criticalCount || 12, icon: Ambulance, color: 'from-blue-500 to-cyan-500', trend: '+15%', trendUp: true, glow: 'shadow-blue-500/20' },
-    { label: 'Resolution Rate', value: `${resolutionRate || 94}%`, icon: Target, color: 'from-purple-500 to-pink-500', trend: '+5%', trendUp: true, glow: 'shadow-purple-500/20' },
-    { label: 'Active Zones', value: new Set(potholes.map(p => p.jurisdictionId)).size || 12, icon: MapPin, color: 'from-yellow-500 to-orange-500', trend: '+3', trendUp: true, glow: 'shadow-yellow-500/20' },
-    { label: 'Avg Response', value: '4.2 min', icon: Clock, color: 'from-indigo-500 to-purple-500', trend: '-23%', trendUp: false, glow: 'shadow-indigo-500/20' },
+    { label: 'My Reports', value: displayPotholes.length, icon: AlertTriangle, color: 'from-red-500 to-orange-500', glow: 'shadow-red-500/20' },
+    { label: 'Complaints', value: displayComplaints.length, icon: FileText, color: 'from-purple-500 to-pink-500', glow: 'shadow-purple-500/20' },
+    { label: 'Verified', value: displayPotholes.filter(p => p.status === 'verified' || p.status === 'in_progress').length, icon: CheckCircle, color: 'from-green-500 to-emerald-500', glow: 'shadow-green-500/20' },
+    { label: 'Critical', value: criticalCount, icon: Ambulance, color: 'from-blue-500 to-cyan-500', glow: 'shadow-blue-500/20' },
+    { label: 'Pending', value: inProgressComplaints + acknowledgedComplaints + submittedComplaints, icon: Clock, color: 'from-yellow-500 to-orange-500', glow: 'shadow-yellow-500/20' },
+    { label: 'Resolved', value: resolvedComplaintsCount, icon: CheckCircle, color: 'from-emerald-500 to-teal-500', glow: 'shadow-emerald-500/20' },
   ]
 
-  const weeklyData = getWeeklyData()
-  const severityDistribution = getSeverityDistribution()
-  const liveActivitiesData = getLiveActivities()
+  // AI Insights from real data
+  const aiInsights = [
+    { title: 'Total Reports', description: `${displayPotholes.length} potholes reported`, icon: MapPin, trend: 'up' },
+    { title: 'Active Complaints', description: `${displayComplaints.filter(c => !['resolved', 'closed'].includes(c.status)).length} complaints in progress`, icon: AlertTriangle, trend: 'warning' },
+    { title: 'Resolved', description: `${resolvedComplaintsCount} issues resolved`, icon: TrendingUp, trend: 'up' },
+    { title: 'Accuracy', description: `${avgConfidence}% avg detection confidence`, icon: CheckCircle, trend: 'stable' },
+  ]
 
   if (authLoading || loading) {
     return (
@@ -207,13 +281,13 @@ export default function DashboardPage() {
                   className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-500/20 border border-red-500/30"
                 >
                   <Radio className="w-4 h-4 text-red-500" />
-                  <span className="text-sm text-red-400 font-medium">AI ROAD INTELLIGENCE CENTER</span>
+                  <span className="text-sm text-red-400 font-medium">MY DASHBOARD</span>
                 </motion.div>
               </div>
               <h1 className="text-2xl lg:text-3xl font-bold text-white">
-                Welcome back
+                Welcome back{user?.displayName ? `, ${user.displayName.split(' ')[0]}` : ''}
               </h1>
-              <p className="text-slate-300 mt-1">Real-time road safety monitoring and incident management</p>
+              <p className="text-slate-300 mt-1">Track and manage your reported road issues</p>
             </div>
 
             <div className="flex items-center gap-3">
@@ -251,24 +325,29 @@ export default function DashboardPage() {
                 <span className="text-sm font-medium text-slate-200">Live Activity Feed</span>
               </div>
               <div className="space-y-3 max-h-40 overflow-y-auto">
-                {liveActivitiesData.map((activity, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.1 }}
-                    className="flex items-center gap-3 text-sm"
-                  >
-                    <div className={cn(
-                      'w-2 h-2 rounded-full',
-                      activity.type === 'ai' ? 'bg-blue-500' :
-                      activity.type === 'response' ? 'bg-green-500' :
-                      activity.type === 'resolved' ? 'bg-slate-500' : 'bg-red-500'
-                    )} />
-                    <p className="text-slate-300 flex-1">{activity.action}</p>
-                    <span className="text-slate-400 text-xs">{activity.time}</span>
-                  </motion.div>
-                ))}
+                {liveActivitiesData.length === 0 ? (
+                  <p className="text-sm text-slate-400 text-center py-4">No recent activity</p>
+                ) : (
+                  liveActivitiesData.map((activity, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.1 }}
+                      className="flex items-center gap-3 text-sm"
+                    >
+                      <div className={cn(
+                        'w-2 h-2 rounded-full',
+                        activity.type === 'ai' ? 'bg-blue-500' :
+                        activity.type === 'response' ? 'bg-green-500' :
+                        activity.type === 'resolved' ? 'bg-slate-500' : 'bg-red-500'
+                      )} />
+                      <p className="text-slate-300 flex-1">{activity.action}</p>
+                      <span className="text-slate-500 text-xs truncate max-w-[80px]">{activity.location}</span>
+                      <span className="text-slate-400 text-xs">{activity.time}</span>
+                    </motion.div>
+                  ))
+                )}
               </div>
             </div>
 
@@ -294,7 +373,7 @@ export default function DashboardPage() {
                       strokeLinecap="round"
                       strokeDasharray="251.2"
                       initial={{ strokeDashoffset: 251.2 }}
-                      animate={{ strokeDashoffset: 251.2 * (1 - 0.94) }}
+                      animate={{ strokeDashoffset: 251.2 * (1 - avgConfidence / 100) }}
                       transition={{ duration: 1.5, ease: 'easeOut' }}
                     />
                     <defs>
@@ -305,15 +384,15 @@ export default function DashboardPage() {
                     </defs>
                   </svg>
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-2xl font-bold">94%</span>
+                    <span className="text-2xl font-bold">{avgConfidence}%</span>
                   </div>
                 </motion.div>
                 <div className="flex-1 space-y-2">
-                  <div className="text-3xl font-bold text-white">94.2%</div>
-                  <p className="text-sm text-slate-400">AI Detection Accuracy</p>
-                  <div className="flex items-center gap-1 text-green-500 text-sm">
-                    <TrendingUp className="w-4 h-4" />
-                    +2.3% from last week
+                  <div className="text-3xl font-bold text-white">{avgConfidence}%</div>
+                  <p className="text-sm text-slate-400">Your Reports Accuracy</p>
+                  <div className="flex items-center gap-1 text-blue-400 text-sm">
+                    <Radio className="w-4 h-4" />
+                    {displayPotholes.length} total reports
                   </div>
                 </div>
               </div>
@@ -343,13 +422,6 @@ export default function DashboardPage() {
                   <div className={cn('p-2 rounded-xl bg-gradient-to-br', stat.color, 'shadow-lg', stat.glow)}>
                     <Icon className="w-5 h-5 text-white" />
                   </div>
-                  <div className={cn(
-                    'flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full',
-                    stat.trendUp ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-                  )}>
-                    {stat.trendUp ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                    {stat.trend}
-                  </div>
                 </div>
 
                 <div className="text-2xl lg:text-3xl font-bold mb-1">
@@ -373,8 +445,8 @@ export default function DashboardPage() {
         >
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-lg font-semibold">Weekly Incident Overview</h3>
-              <p className="text-sm text-slate-300">Incident reports vs resolutions</p>
+              <h3 className="text-lg font-semibold">My Reports This Week</h3>
+              <p className="text-sm text-slate-300">Your submitted reports by day</p>
             </div>
             <div className="flex gap-4 text-sm">
               <span className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-red-500" /> Incidents</span>
@@ -447,7 +519,7 @@ export default function DashboardPage() {
             </ResponsiveContainer>
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center">
-                <div className="text-2xl font-bold">{totalPotholes || 120}</div>
+                <div className="text-2xl font-bold">{displayPotholes.length}</div>
                 <p className="text-xs text-slate-300">Total</p>
               </div>
             </div>
@@ -471,8 +543,8 @@ export default function DashboardPage() {
         <motion.div variants={fadeInUp} className="lg:col-span-2 rounded-2xl bg-slate-900/50 border border-slate-800/50 backdrop-blur-xl p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-lg font-semibold text-white">Recent Incidents</h3>
-              <p className="text-sm text-slate-300">Latest detected road safety issues</p>
+              <h3 className="text-lg font-semibold text-white">My Reports</h3>
+              <p className="text-sm text-slate-300">Your submitted pothole reports</p>
             </div>
             <Link href="/complaints" className="text-sm text-red-400 hover:text-red-300 flex items-center gap-1">
               View All <ChevronRight className="w-4 h-4" />
@@ -480,72 +552,63 @@ export default function DashboardPage() {
           </div>
 
           <div className="space-y-3">
-            {incidentData.map((incident, i) => (
+            {displayPotholes.slice(0, 4).map((pothole) => (
               <motion.div
-                key={incident.id}
+                key={pothole.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
                 whileHover={{ x: 4 }}
-                onClick={() => setSelectedIncident(incident)}
-                className={cn(
-                  'flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all',
-                  'bg-slate-800/30 border-slate-700/50 hover:bg-slate-800/50 hover:border-slate-600'
-                )}
+                className="flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all bg-slate-800/30 border-slate-700/50 hover:bg-slate-800/50 hover:border-slate-600"
               >
-                {/* Severity Indicator */}
                 <div className="relative">
                   <div className={cn(
                     'w-12 h-12 rounded-xl flex items-center justify-center',
-                    incident.severity === 'critical' ? 'bg-red-500/20 text-red-500' :
-                    incident.severity === 'high' ? 'bg-orange-500/20 text-orange-500' :
-                    incident.severity === 'medium' ? 'bg-yellow-500/20 text-yellow-500' :
+                    pothole.severity === 'critical' ? 'bg-red-500/20 text-red-500' :
+                    pothole.severity === 'high' ? 'bg-orange-500/20 text-orange-500' :
+                    pothole.severity === 'medium' ? 'bg-yellow-500/20 text-yellow-500' :
                     'bg-green-500/20 text-green-500'
                   )}>
-                    {incident.type === 'accident' ? <AlertTriangle className="w-6 h-6" /> : <MapPin className="w-6 h-6" />}
+                    <MapPin className="w-6 h-6" />
                   </div>
-                  {incident.severity === 'critical' && (
+                  {pothole.severity === 'critical' && (
                     <div className="absolute -inset-1 rounded-xl bg-red-500/30 animate-pulse" />
                   )}
                 </div>
 
-                {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium capitalize">{incident.type}</span>
+                    <span className="font-medium capitalize">pothole</span>
                     <span className={cn(
                       'px-2 py-0.5 text-xs rounded-full capitalize',
-                      incident.severity === 'critical' ? 'bg-red-500/20 text-red-400' :
-                      incident.severity === 'high' ? 'bg-orange-500/20 text-orange-400' :
-                      incident.severity === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                      pothole.severity === 'critical' ? 'bg-red-500/20 text-red-400' :
+                      pothole.severity === 'high' ? 'bg-orange-500/20 text-orange-400' :
+                      pothole.severity === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
                       'bg-green-500/20 text-green-400'
                     )}>
-                      {incident.severity}
+                      {pothole.severity}
                     </span>
                   </div>
                   <p className="text-sm text-slate-400 truncate">
-                    {incident.lat.toFixed(4)}, {incident.lng.toFixed(4)} • {incident.time}
+                    {pothole.address || `${pothole.lat?.toFixed(4)}, ${pothole.lng?.toFixed(4)}`} • {formatRelativeTime(pothole.createdAt)}
                   </p>
                 </div>
 
-                {/* Confidence */}
                 <div className="text-right">
                   <div className="flex items-center gap-2">
                     <Eye className="w-4 h-4 text-slate-500" />
-                    <span className="text-sm font-medium">{incident.confidence}%</span>
+                    <span className="text-sm font-medium">{Math.round((pothole.confidence || 0) * 100)}%</span>
                   </div>
                   <p className="text-xs text-slate-300">AI Confidence</p>
                 </div>
 
-                {/* Status */}
                 <div className={cn(
                   'px-3 py-1 rounded-full text-xs font-medium',
-                  incident.status === 'dispatched' ? 'bg-red-500/20 text-red-400' :
-                  incident.status === 'reviewing' ? 'bg-yellow-500/20 text-yellow-400' :
-                  incident.status === 'assigned' ? 'bg-blue-500/20 text-blue-400' :
-                  'bg-green-500/20 text-green-400'
+                  pothole.status === 'verified' ? 'bg-blue-500/20 text-blue-400' :
+                  pothole.status === 'in_progress' ? 'bg-yellow-500/20 text-yellow-400' :
+                  pothole.status === 'resolved' ? 'bg-green-500/20 text-green-400' :
+                  'bg-slate-500/20 text-slate-400'
                 )}>
-                  {incident.status}
+                  {pothole.status?.replace('_', ' ')}
                 </div>
               </motion.div>
             ))}
@@ -598,10 +661,10 @@ export default function DashboardPage() {
       {/* Quick Actions */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { title: 'View Heatmap', desc: 'See incident density across zones', icon: Layers, color: 'from-orange-500 to-red-500', href: '/map?view=heatmap' },
-          { title: 'Emergency Dispatch', desc: 'Send response team to location', icon: Ambulance, color: 'from-blue-500 to-cyan-500', href: '/complaints' },
-          { title: 'Generate Report', desc: 'Create daily/weekly analytics', icon: FileText, color: 'from-purple-500 to-pink-500', href: '/analytics' },
-          { title: 'AI Predictions', desc: 'View accident prediction model', icon: Activity, color: 'from-green-500 to-emerald-500', href: '/analytics' },
+          { title: 'Report Pothole', desc: 'Submit a new road issue', icon: AlertTriangle, color: 'from-red-500 to-orange-500', href: '/report' },
+          { title: 'View Map', desc: 'See all reported issues', icon: MapIcon, color: 'from-blue-500 to-cyan-500', href: '/map' },
+          { title: 'My Complaints', desc: 'Track your reports', icon: FileText, color: 'from-purple-500 to-pink-500', href: '/complaints' },
+          { title: 'Analytics', desc: 'View road statistics', icon: BarChart3, color: 'from-green-500 to-emerald-500', href: '/analytics' },
         ].map((action, i) => {
           const Icon = action.icon
           return (

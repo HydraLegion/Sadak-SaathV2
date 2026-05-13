@@ -164,8 +164,8 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
           })
         },
         () => {
-          // Default to Delhi coordinates
-          setLocation({ lat: 28.6139, lng: 77.209 })
+          // Default to Raipur coordinates
+          setLocation({ lat: 21.2514, lng: 81.6296 })
         }
       )
     }

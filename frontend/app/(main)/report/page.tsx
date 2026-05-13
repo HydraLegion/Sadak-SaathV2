@@ -37,7 +37,7 @@ export default function ReportPage() {
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-      router.push('/login')
+      router.push('/auth')
     }
   }, [authLoading, isAuthenticated, router])
 
@@ -45,7 +45,7 @@ export default function ReportPage() {
     if (typeof window !== 'undefined' && 'geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         (pos) => setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => setLocation({ lat: 28.6139, lng: 77.209 })
+        () => setLocation({ lat: 21.2514, lng: 81.6296 })
       )
     }
   }, [])
@@ -87,7 +87,7 @@ export default function ReportPage() {
         severity: severity || detectedSeverity || 'medium',
         confidence,
         status: 'pending',
-        jurisdictionId: 'DL-Central',
+        jurisdictionId: 'CG-Central',
         departmentId: null,
         address: address || `Lat: ${location?.lat.toFixed(4)}, Lng: ${location?.lng.toFixed(4)}`,
         description,
@@ -104,7 +104,7 @@ export default function ReportPage() {
       setUploadProgress(75)
 
       // Generate reference number
-      const refNum = `CMP/DL/${new Date().getFullYear()}/${String(Date.now()).slice(-6)}`
+      const refNum = `CMP/CG/${new Date().getFullYear()}/${String(Date.now()).slice(-6)}`
       setReferenceNumber(refNum)
 
       // Create complaint record
@@ -114,7 +114,7 @@ export default function ReportPage() {
         status: 'submitted',
         priority: severity || detectedSeverity || 'medium',
         assignedTo: null,
-        jurisdictionId: 'DL-Central',
+        jurisdictionId: 'CG-Central',
         departmentId: null,
         referenceNumber: refNum,
         title: address || `Pothole at ${location?.lat.toFixed(4)}, ${location?.lng.toFixed(4)}`,

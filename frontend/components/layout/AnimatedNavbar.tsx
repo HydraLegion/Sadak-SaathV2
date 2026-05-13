@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { useUIStore, useThemeStore, useNotificationStore } from '@/stores'
+import { useUIStore, useThemeStore, useNotificationStore, useAuthStore } from '@/stores'
 import {
   LayoutDashboard, Map, FileText, BarChart3, PlusCircle,
   Shield, Users, Eye, MapPin, Settings, Bell, Sun, Moon,
@@ -229,13 +229,17 @@ export function AnimatedNavbar({ user }: AnimatedNavbarProps) {
 
         {/* Sign Out */}
         <div className="p-4 border-t border-slate-800/50">
-          <Link
-            href="/login"
+          <button
+            onClick={async () => {
+              const { logout } = useAuthStore.getState()
+              await logout()
+              window.location.href = '/'
+            }}
             className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-slate-800/50 border border-slate-700/50 text-slate-200 hover:text-white hover:bg-slate-700 transition-all"
           >
             <LogOut className="w-4 h-4 text-slate-300" />
             Sign Out
-          </Link>
+          </button>
         </div>
       </motion.aside>
 
@@ -285,8 +289,8 @@ export function AnimatedNavbar({ user }: AnimatedNavbarProps) {
 
               {/* Clock */}
               <div className="hidden lg:flex flex-col items-end">
-                <span className="text-sm font-medium text-white">{currentTime.toLocaleTimeString()}</span>
-                <span className="text-xs text-slate-300">{currentTime.toLocaleDateString()}</span>
+                <span suppressHydrationWarning className="text-sm font-medium text-white">{currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</span>
+                <span suppressHydrationWarning className="text-xs text-slate-300">{currentTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
               </div>
 
               {/* Notifications */}

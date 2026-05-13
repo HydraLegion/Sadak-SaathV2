@@ -39,11 +39,18 @@ interface RegisterData {
   role: UserRole
 }
 
+// Noop storage for SSR
+const noopStorage = {
+  getItem: () => null,
+  setItem: () => {},
+  removeItem: () => {},
+}
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       user: null,
-      isLoading: true,
+      isLoading: false,
       isAuthenticated: false,
       role: null,
       error: null,
@@ -205,7 +212,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'sadak-saathi-auth',
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => (typeof window !== 'undefined' ? localStorage : noopStorage)),
       partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,
@@ -216,23 +223,29 @@ export const useAuthStore = create<AuthState>()(
 )
 
 // Initialize auth state listener
+let authInitialized = false
+
 if (typeof window !== 'undefined') {
   onAuthStateChanged(auth, async (firebaseUser) => {
-    const store = useAuthStore.getState()
-    if (firebaseUser) {
-      try {
-        const docSnap = await getDoc(doc(db, 'users', firebaseUser.uid))
-        if (docSnap.exists()) {
-          const userData = { uid: firebaseUser.uid, ...docSnap.data() } as User
-          useAuthStore.setState({ user: userData, isAuthenticated: true, role: userData.role, isLoading: false })
-        } else {
-          useAuthStore.setState({ user: null, isAuthenticated: false, role: null, isLoading: false })
+    // Skip if not yet initialized (first call)
+    if (!authInitialized) {
+      authInitialized = true
+      if (firebaseUser) {
+        try {
+          const docSnap = await getDoc(doc(db, 'users', firebaseUser.uid))
+          if (docSnap.exists()) {
+            const userData = { uid: firebaseUser.uid, ...docSnap.data() } as User
+            useAuthStore.setState({ user: userData, isAuthenticated: true, role: userData.role, isLoading: false })
+          } else {
+            useAuthStore.setState({ user: null, isAuthenticated: false, role: null, isLoading: false })
+          }
+        } catch {
+          // Firebase not available, try to use persisted state
+          useAuthStore.setState({ isLoading: false })
         }
-      } catch {
-        useAuthStore.setState({ user: null, isAuthenticated: false, role: null, isLoading: false })
+      } else {
+        useAuthStore.setState({ isLoading: false })
       }
-    } else {
-      useAuthStore.setState({ user: null, isAuthenticated: false, role: null, isLoading: false })
     }
   })
 }

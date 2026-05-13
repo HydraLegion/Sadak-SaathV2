@@ -40,24 +40,42 @@ export default function ComplaintsPage() {
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-      router.push('/login')
+      router.push('/auth')
     }
   }, [authLoading, isAuthenticated, router])
 
   useEffect(() => {
     if (!isAuthenticated) return
 
-    const q = query(collection(db, 'complaints'), orderBy('createdAt', 'desc'))
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Complaint))
-      setComplaints(data)
-      setLoading(false)
-    }, (error) => {
-      console.error('Error fetching complaints:', error)
-      setLoading(false)
-    })
+    const timeoutId = setTimeout(() => {
+      try {
+        const q = query(collection(db, 'complaints'), orderBy('createdAt', 'desc'))
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+          try {
+            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Complaint))
+            setComplaints(data)
+          } catch (e) {
+            console.error('Error parsing complaints:', e)
+          }
+          setLoading(false)
+        }, (error) => {
+          console.error('Firestore complaints error:', error)
+          setLoading(false)
+        })
+        return () => {
+          try {
+            unsubscribe()
+          } catch (e) {
+            console.error('Error unsubscribing:', e)
+          }
+        }
+      } catch (error) {
+        console.error('Firestore setup error:', error)
+        setLoading(false)
+      }
+    }, 500)
 
-    return () => unsubscribe()
+    return () => clearTimeout(timeoutId)
   }, [isAuthenticated])
 
   const filteredComplaints = complaints.filter(c => {

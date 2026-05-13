@@ -17,7 +17,7 @@ import {
   MessageSquare, Send, ArrowLeft, Calendar, ChevronRight, Loader2
 } from 'lucide-react'
 import { cn, formatRelativeTime, formatSLACountdown, getSeverityVariant } from '@/lib/utils'
-import type { Complaint, ComplaintStatus, PotholeSeverity, ComplaintTimelineEntry } from '@/lib/types'
+import type { Complaint, ComplaintStatus, PotholeSeverity, ComplaintTimelineEntry, Pothole } from '@/lib/types'
 
 const statusConfig: Record<ComplaintStatus, { label: string; color: string; icon: React.ElementType; nextActions: string[] }> = {
   submitted: { label: 'Submitted', color: 'bg-blue-100 text-blue-800', icon: AlertTriangle, nextActions: ['Acknowledge', 'Assign', 'Reject'] },
@@ -34,7 +34,7 @@ export default function ComplaintDetailPage() {
   const router = useRouter()
   const { user, hasPermission } = useAuthStore()
   const [complaint, setComplaint] = useState<Complaint | null>(null)
-  const [pothole, setPothole] = useState<any>(null)
+  const [pothole, setPothole] = useState<Pothole | null>(null)
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
   const [comment, setComment] = useState('')

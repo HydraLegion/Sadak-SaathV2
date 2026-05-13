@@ -31,7 +31,7 @@ interface MapState {
 }
 
 const initialState = {
-  center: { lat: 28.6139, lng: 77.209 }, // Default: New Delhi
+  center: { lat: 21.2514, lng: 81.6296 }, // Default: Raipur, Chhattisgarh
   zoom: 12,
   selectedPotholeId: null,
   selectedMarkerIds: [],

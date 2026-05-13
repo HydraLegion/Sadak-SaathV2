@@ -15,11 +15,11 @@ import {
 import { cn } from '@/lib/utils'
 
 const mockJurisdictions = [
-  { code: 'DL-Central', name: 'Central Delhi', type: 'zone', parentId: 'delhi', departmentId: 'PWD-DL', potholeCount: 45, isActive: true },
-  { code: 'DL-North', name: 'North Delhi', type: 'zone', parentId: 'delhi', departmentId: 'PWD-DL', potholeCount: 38, isActive: true },
-  { code: 'DL-South', name: 'South Delhi', type: 'zone', parentId: 'delhi', departmentId: 'PWD-DL', potholeCount: 52, isActive: true },
-  { code: 'DL-East', name: 'East Delhi', type: 'zone', parentId: 'delhi', departmentId: 'PWD-DL', potholeCount: 28, isActive: true },
-  { code: 'DL-West', name: 'West Delhi', type: 'zone', parentId: 'delhi', departmentId: 'PWD-DL', potholeCount: 41, isActive: true },
+  { code: 'CG-Central', name: 'Central Raipur', type: 'zone', parentId: 'chhattisgarh', departmentId: 'PWD-CG', potholeCount: 45, isActive: true },
+  { code: 'CG-North', name: 'North Raipur', type: 'zone', parentId: 'chhattisgarh', departmentId: 'PWD-CG', potholeCount: 38, isActive: true },
+  { code: 'CG-South', name: 'South Raipur', type: 'zone', parentId: 'chhattisgarh', departmentId: 'PWD-CG', potholeCount: 52, isActive: true },
+  { code: 'CG-East', name: 'East Raipur', type: 'zone', parentId: 'chhattisgarh', departmentId: 'PWD-CG', potholeCount: 28, isActive: true },
+  { code: 'CG-West', name: 'West Raipur', type: 'zone', parentId: 'chhattisgarh', departmentId: 'PWD-CG', potholeCount: 41, isActive: true },
 ]
 
 export default function JurisdictionsPage() {
@@ -32,8 +32,8 @@ export default function JurisdictionsPage() {
     name: '',
     code: '',
     type: 'zone',
-    parentId: 'delhi',
-    departmentId: 'PWD-DL',
+    parentId: 'chhattisgarh',
+    departmentId: 'PWD-CG',
   })
 
   const saveJurisdiction = async () => {
@@ -51,7 +51,7 @@ export default function JurisdictionsPage() {
     setLoading(false)
     setShowAddDialog(false)
     setEditingJurisdiction(null)
-    setFormData({ name: '', code: '', type: 'zone', parentId: 'delhi', departmentId: 'PWD-DL' })
+    setFormData({ name: '', code: '', type: 'zone', parentId: 'chhattisgarh', departmentId: 'PWD-CG' })
   }
 
   const toggleActive = async (code: string) => {
@@ -185,7 +185,7 @@ export default function JurisdictionsPage() {
         setShowAddDialog(open)
         if (!open) {
           setEditingJurisdiction(null)
-          setFormData({ name: '', code: '', type: 'zone', parentId: 'delhi', departmentId: 'PWD-DL' })
+          setFormData({ name: '', code: '', type: 'zone', parentId: 'chhattisgarh', departmentId: 'PWD-CG' })
         }
       }}>
         <DialogContent>
@@ -201,7 +201,7 @@ export default function JurisdictionsPage() {
             <div className="space-y-2">
               <Label>Name</Label>
               <Input
-                placeholder="Central Delhi"
+                placeholder="Central Raipur"
                 value={formData.name}
                 onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
               />
@@ -209,7 +209,7 @@ export default function JurisdictionsPage() {
             <div className="space-y-2">
               <Label>Code</Label>
               <Input
-                placeholder="DL-Central"
+                placeholder="CG-Central"
                 value={formData.code}
                 onChange={(e) => setFormData(prev => ({ ...prev, code: e.target.value }))}
               />
@@ -234,8 +234,8 @@ export default function JurisdictionsPage() {
                 value={formData.departmentId}
                 onChange={(e) => setFormData(prev => ({ ...prev, departmentId: e.target.value }))}
               >
-                <option value="PWD-DL">PWD Delhi</option>
-                <option value="MCD-DL">MCD Delhi</option>
+                <option value="PWD-CG">PWD Chhattisgarh</option>
+                <option value="PWD-CG">PWD CG</option>
               </select>
             </div>
           </div>

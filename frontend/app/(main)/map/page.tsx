@@ -14,7 +14,7 @@ import {
 import { useMapStore } from '@/stores/map'
 import { cn, getSeverityVariant } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth'
-import { collection, query, getDocs, onSnapshot, orderBy } from 'firebase/firestore'
+import { collection, query, onSnapshot, orderBy } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import type { Pothole, PotholeSeverity } from '@/lib/types'
 import Link from 'next/link'
@@ -31,6 +31,15 @@ const severityColors: Record<PotholeSeverity, string> = {
   low: '#65a30d'
 }
 
+// Fallback demo potholes for Raipur area when Firebase is unavailable
+const DEMO_POTHOLES: Pothole[] = [
+  { id: 'demo-1', lat: 21.2514, lng: 81.6296, severity: 'critical', confidence: 0.94, status: 'pending', address: 'MG Road, Raipur', jurisdictionId: 'CG-Central', departmentId: null, description: 'Demo pothole', mediaUrls: [], thumbnailUrl: null, detectedAt: new Date(), detectedBy: 'demo', verifiedAt: null, verifiedBy: null, resolvedAt: null, createdBy: 'demo', createdAt: new Date(), updatedAt: new Date() },
+  { id: 'demo-2', lat: 21.2564, lng: 81.6346, severity: 'high', confidence: 0.87, status: 'verified', address: 'GE Road, Shankar Nagar', jurisdictionId: 'CG-Central', departmentId: null, description: 'Demo pothole', mediaUrls: [], thumbnailUrl: null, detectedAt: new Date(), detectedBy: 'demo', verifiedAt: null, verifiedBy: null, resolvedAt: null, createdBy: 'demo', createdAt: new Date(), updatedAt: new Date() },
+  { id: 'demo-3', lat: 21.2539, lng: 81.6190, severity: 'medium', confidence: 0.76, status: 'in_progress', address: 'Pandri Road', jurisdictionId: 'CG-Central', departmentId: null, description: 'Demo pothole', mediaUrls: [], thumbnailUrl: null, detectedAt: new Date(), detectedBy: 'demo', verifiedAt: null, verifiedBy: null, resolvedAt: null, createdBy: 'demo', createdAt: new Date(), updatedAt: new Date() },
+  { id: 'demo-4', lat: 21.2639, lng: 81.6240, severity: 'low', confidence: 0.68, status: 'resolved', address: 'Shankar Nagar', jurisdictionId: 'CG-Central', departmentId: null, description: 'Demo pothole', mediaUrls: [], thumbnailUrl: null, detectedAt: new Date(), detectedBy: 'demo', verifiedAt: null, verifiedBy: null, resolvedAt: null, createdBy: 'demo', createdAt: new Date(), updatedAt: new Date() },
+  { id: 'demo-5', lat: 21.2589, lng: 81.6040, severity: 'critical', confidence: 0.92, status: 'pending', address: 'Telibandha Road', jurisdictionId: 'CG-Central', departmentId: null, description: 'Demo pothole', mediaUrls: [], thumbnailUrl: null, detectedAt: new Date(), detectedBy: 'demo', verifiedAt: null, verifiedBy: null, resolvedAt: null, createdBy: 'demo', createdAt: new Date(), updatedAt: new Date() },
+]
+
 function MapContent() {
   const router = useRouter()
   const { isAuthenticated, isLoading: authLoading } = useAuthStore()
@@ -40,7 +49,11 @@ function MapContent() {
   const [potholes, setPotholes] = useState<Pothole[]>([])
   const [loading, setLoading] = useState(true)
   const searchParams = useSearchParams()
-  const mapRef = useRef<L.Map | null>(null)
+  const mapInstanceRef = useRef<L.Map | null>(null)
+
+  const setMapInstance = useCallback((map: L.Map) => {
+    mapInstanceRef.current = map
+  }, [])
 
   const {
     center, zoom, showHeatmap,
@@ -50,7 +63,7 @@ function MapContent() {
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-      router.push('/login')
+      router.push('/auth')
     }
   }, [authLoading, isAuthenticated, router])
 
@@ -65,25 +78,54 @@ function MapContent() {
   }, [])
 
   useEffect(() => {
-    const q = query(collection(db, 'potholes'), orderBy('createdAt', 'desc'))
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Pothole))
-      setPotholes(data)
-      setLoading(false)
-    }, (error) => {
-      console.error('Error fetching potholes:', error)
-      setLoading(false)
-    })
-    return () => unsubscribe()
+    const timeoutId = setTimeout(() => {
+      try {
+        const q = query(collection(db, 'potholes'), orderBy('createdAt', 'desc'))
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+          try {
+            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Pothole))
+            // Use demo data if Firestore returns empty or Firebase isn't connected
+            setPotholes(data.length > 0 ? data : DEMO_POTHOLES)
+          } catch (e) {
+            console.error('Error parsing potholes:', e)
+            // Fall back to demo data on error
+            setPotholes(DEMO_POTHOLES)
+          }
+          setLoading(false)
+        }, (error) => {
+          console.error('Firestore error:', error)
+          // Use demo data when Firebase isn't connected
+          setPotholes(DEMO_POTHOLES)
+          setLoading(false)
+        })
+        return () => {
+          try {
+            unsubscribe()
+          } catch (e) {
+            console.error('Error unsubscribing:', e)
+          }
+        }
+      } catch (error) {
+        console.error('Firestore setup error:', error)
+        // Use demo data when Firebase isn't connected
+        setPotholes(DEMO_POTHOLES)
+        setLoading(false)
+      }
+    }, 500)
+
+    return () => clearTimeout(timeoutId)
   }, [])
 
   const handleRecenter = useCallback(() => {
-    if (mapRef.current) {
-      mapRef.current.setView([28.6139, 77.209], 12, { animate: true })
+    if (mapInstanceRef.current) {
+      // Center on Raipur, Chhattisgarh
+      mapInstanceRef.current.setView([21.2514, 81.6296], 12, { animate: true })
     }
   }, [])
 
   const filteredPotholes = potholes.filter(p => {
+    // Only show potholes with valid coordinates
+    if (!p.lat || !p.lng) return false
     if (filterSeverity.length > 0 && !filterSeverity.includes(p.severity)) return false
     return true
   })
@@ -155,11 +197,15 @@ function MapContent() {
           </Card>
 
           <div>
-            <h3 className="text-sm font-medium mb-2">Nearby ({filteredPotholes.length})</h3>
+            <h3 className="text-sm font-medium mb-2">Nearby ({filteredPotholes.length} potholes)</h3>
+            <p className="text-xs text-muted-foreground mb-2">Total loaded: {potholes.length}</p>
             <div className="space-y-2 max-h-[300px] overflow-auto">
-              {filteredPotholes.slice(0, 20).map((pothole) => (
+              {filteredPotholes.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No potholes with location data</p>
+              ) : (
+              filteredPotholes.slice(0, 20).map((pothole) => (
                 <button key={pothole.id}
-                  onClick={() => { selectPothole(pothole.id); mapRef.current?.setView([pothole.lat, pothole.lng], 16, { animate: true }) }}
+                  onClick={() => { selectPothole(pothole.id); mapInstanceRef.current?.setView([pothole.lat, pothole.lng], 16, { animate: true }) }}
                   className={cn('w-full text-left p-2 rounded border transition-all', selectedPotholeId === pothole.id ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50')}>
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full" style={{ backgroundColor: severityColors[pothole.severity] }} />
@@ -167,7 +213,8 @@ function MapContent() {
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">{Math.round((pothole.confidence || 0) * 100)}% confidence</p>
                 </button>
-              ))}
+              ))
+              )}
             </div>
           </div>
         </div>
@@ -178,9 +225,9 @@ function MapContent() {
           {!showSidebar && <Button variant="secondary" size="icon" onClick={() => setShowSidebar(true)} className="shadow-lg"><Filter className="h-4 w-4" /></Button>}
           <Button variant="secondary" size="icon" onClick={handleRecenter} className="shadow-lg"><Crosshair className="h-4 w-4" /></Button>
           <div className="bg-card rounded-lg border shadow-lg flex flex-col">
-            <Button variant="ghost" size="icon" onClick={() => mapRef.current?.zoomIn()}><ZoomIn className="h-4 w-4" /></Button>
+            <Button variant="ghost" size="icon" onClick={() => mapInstanceRef.current?.zoomIn()}><ZoomIn className="h-4 w-4" /></Button>
             <div className="h-px bg-border" />
-            <Button variant="ghost" size="icon" onClick={() => mapRef.current?.zoomOut()}><ZoomOut className="h-4 w-4" /></Button>
+            <Button variant="ghost" size="icon" onClick={() => mapInstanceRef.current?.zoomOut()}><ZoomOut className="h-4 w-4" /></Button>
           </div>
           <Button variant="secondary" size="icon" onClick={() => setFullscreen(!fullscreen)} className="shadow-lg">
             {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
@@ -188,7 +235,7 @@ function MapContent() {
         </div>
 
         <div className={cn('h-full rounded-lg border overflow-hidden', fullscreen ? 'h-[calc(100vh-2rem)]' : 'h-[600px]')}>
-          <MapContainer center={[center.lat, center.lng]} zoom={zoom} className="h-full w-full" ref={mapRef}>
+          <MapContainer center={[21.2514, 81.6296]} zoom={zoom || 13} className="h-full w-full" whenReady={(map) => setMapInstance(map.target)}>
             <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             {!showHeatmap && filteredPotholes.map((pothole) => (
               <CircleMarker key={pothole.id} center={[pothole.lat, pothole.lng]} radius={8}

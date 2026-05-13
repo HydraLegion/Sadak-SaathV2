@@ -782,7 +782,7 @@ function TestimonialsSection() {
     },
     {
       name: 'Rajesh Kumar',
-      role: 'Road Inspector, Delhi',
+      role: 'Road Inspector, Raipur',
       text: 'Our response time for critical potholes has improved by 40% since using Sadak Saathi. A game-changer for infrastructure management.',
       rating: 5,
       avatar: 'RK',

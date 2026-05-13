@@ -27,6 +27,8 @@ const navItems = [
 const adminItems = [
   { href: '/dashboard', label: 'Command Center', icon: Shield },
   { href: '/admin/users', label: 'User Management', icon: User },
+  { href: '/admin/officers', label: 'Manage Officers', icon: Shield },
+  { href: '/admin/setup', label: 'Database Setup', icon: MapPin },
   { href: '/admin/moderation', label: 'AI Moderation', icon: Eye },
   { href: '/admin/audit', label: 'Audit Logs', icon: FileText },
   { href: '/admin/jurisdictions', label: 'Jurisdictions', icon: MapPin },
@@ -256,7 +258,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => logout().then(() => window.location.href = '/login')}
+            onClick={() => logout().then(() => window.location.href = '/')}
             className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-slate-800/50 border border-slate-700/50 text-slate-200 hover:text-white hover:bg-slate-700 transition-all"
           >
             <LogOut className="w-4 h-4 text-slate-300" />

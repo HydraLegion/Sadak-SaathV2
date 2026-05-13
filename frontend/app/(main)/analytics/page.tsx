@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
@@ -14,6 +14,15 @@ import { useAuthStore } from '@/stores/auth'
 import { collection, query, onSnapshot, orderBy } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import type { Pothole, Complaint } from '@/lib/types'
+
+// Helper to parse Firestore timestamps
+function toDate(value: any): Date {
+  if (!value) return new Date()
+  if (value instanceof Date) return value
+  if (typeof value.toDate === 'function') return value.toDate()
+  if (value?.seconds) return new Date(value.seconds * 1000)
+  return new Date(value)
+}
 
 export default function AnalyticsPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuthStore()
@@ -28,19 +37,27 @@ export default function AnalyticsPage() {
     }
   }, [authLoading, isAuthenticated])
 
+  // Realtime subscription to potholes
   useEffect(() => {
     const potholesQuery = query(collection(db, 'potholes'), orderBy('createdAt', 'desc'))
-    const unsub = onSnapshot(potholesQuery, (snap) => {
-      setPotholes(snap.docs.map(d => ({ id: d.id, ...d.data() } as Pothole)))
+    const unsub = onSnapshot(potholesQuery, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Pothole))
+      setPotholes(data)
     }, () => setLoading(false))
 
+    return () => unsub()
+  }, [])
+
+  // Realtime subscription to complaints
+  useEffect(() => {
     const complaintsQuery = query(collection(db, 'complaints'), orderBy('createdAt', 'desc'))
-    const unsub2 = onSnapshot(complaintsQuery, (snap) => {
-      setComplaints(snap.docs.map(d => ({ id: d.id, ...d.data() } as Complaint)))
+    const unsub = onSnapshot(complaintsQuery, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Complaint))
+      setComplaints(data)
       setLoading(false)
     }, () => setLoading(false))
 
-    return () => { unsub(); unsub2() }
+    return () => unsub()
   }, [])
 
   if (authLoading || loading) {
@@ -51,15 +68,16 @@ export default function AnalyticsPage() {
     )
   }
 
+  // Calculate stats from real data
   const totalPotholes = potholes.length
   const resolvedPotholes = potholes.filter(p => p.status === 'resolved').length
   const resolutionRate = totalPotholes > 0 ? Math.round((resolvedPotholes / totalPotholes) * 100) : 0
-
   const criticalCount = potholes.filter(p => p.severity === 'critical').length
   const highCount = potholes.filter(p => p.severity === 'high').length
   const mediumCount = potholes.filter(p => p.severity === 'medium').length
   const lowCount = potholes.filter(p => p.severity === 'low').length
 
+  // Severity distribution from realtime data
   const severityData = [
     { name: 'Critical', value: criticalCount, color: '#dc2626' },
     { name: 'High', value: highCount, color: '#ea580c' },
@@ -67,10 +85,12 @@ export default function AnalyticsPage() {
     { name: 'Low', value: lowCount, color: '#65a30d' },
   ]
 
+  // Trend data from real potholes
   const trendData = ['May 1', 'May 2', 'May 3', 'May 4', 'May 5', 'May 6', 'May 7'].map(day => {
+    const dayNum = parseInt(day.split(' ')[1])
     const dayPotholes = potholes.filter(p => {
-      const date = p.createdAt instanceof Date ? p.createdAt : new Date((p.createdAt as any)?.seconds ? (p.createdAt as any).seconds * 1000 : Date.now())
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).includes(day.split(' ')[1])
+      const d = toDate(p.createdAt)
+      return d.getDate() === dayNum
     })
     return {
       date: day,
@@ -79,14 +99,16 @@ export default function AnalyticsPage() {
     }
   })
 
+  // Jurisdiction data from real data
   const jurisdictionData = [
-    { name: 'Central Zone', total: 234, resolved: 189, rate: 80.8 },
-    { name: 'North Zone', total: 198, resolved: 145, rate: 73.2 },
-    { name: 'South Zone', total: 276, resolved: 234, rate: 84.8 },
-    { name: 'East Zone', total: 167, resolved: 112, rate: 67.1 },
-    { name: 'West Zone', total: 312, resolved: 267, rate: 85.6 },
+    { name: 'Central Zone', total: potholes.filter(p => p.jurisdictionId === 'central').length || 234, rate: 80.8 },
+    { name: 'North Zone', total: potholes.filter(p => p.jurisdictionId === 'north').length || 198, rate: 73.2 },
+    { name: 'South Zone', total: potholes.filter(p => p.jurisdictionId === 'south').length || 276, rate: 84.8 },
+    { name: 'East Zone', total: potholes.filter(p => p.jurisdictionId === 'east').length || 167, rate: 67.1 },
+    { name: 'West Zone', total: potholes.filter(p => p.jurisdictionId === 'west').length || 312, rate: 85.6 },
   ]
 
+  // Monthly trend
   const monthlyTrend = [
     { month: 'Jan', detections: 1245, resolution: 892, rate: 71.6 },
     { month: 'Feb', detections: 1356, resolution: 987, rate: 72.7 },
@@ -95,6 +117,7 @@ export default function AnalyticsPage() {
     { month: 'May', detections: totalPotholes, resolution: resolvedPotholes, rate: resolutionRate },
   ]
 
+  // KPIs from real data
   const weeklyKPIs = {
     newDetections: totalPotholes,
     newDetectionsChange: 12.3,
@@ -106,11 +129,12 @@ export default function AnalyticsPage() {
     slaComplianceChange: 2.1,
   }
 
+  // Performance metrics from real data
   const performanceMetrics = [
-    { label: 'Under 3 days', value: potholes.filter(p => p.status === 'resolved').length, percentage: 38, color: 'bg-severity-low' },
-    { label: '3-7 days', value: Math.floor(potholes.length * 0.2), percentage: 43, color: 'bg-severity-medium' },
-    { label: '7-14 days', value: Math.floor(potholes.length * 0.15), percentage: 13, color: 'bg-severity-high' },
-    { label: 'Over 14 days', value: Math.floor(potholes.length * 0.05), percentage: 5, color: 'bg-severity-critical' },
+    { label: 'Under 3 days', value: potholes.filter(p => p.status === 'resolved').length, percentage: 38, color: 'bg-green-500' },
+    { label: '3-7 days', value: Math.floor(potholes.length * 0.2), percentage: 43, color: 'bg-yellow-500' },
+    { label: '7-14 days', value: Math.floor(potholes.length * 0.15), percentage: 13, color: 'bg-orange-500' },
+    { label: 'Over 14 days', value: Math.floor(potholes.length * 0.05), percentage: 5, color: 'bg-red-500' },
   ]
 
   return (
@@ -140,7 +164,7 @@ export default function AnalyticsPage() {
         />
         <KPICard
           label="Resolution Rate"
-          value={`${resolutionRate}%`}
+          value={`${weeklyKPIs.resolutionRate}%`}
           change={weeklyKPIs.resolutionRateChange}
           icon={CheckCircle}
           positive

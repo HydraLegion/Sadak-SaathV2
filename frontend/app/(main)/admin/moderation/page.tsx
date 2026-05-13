@@ -16,10 +16,10 @@ import {
 import { cn, formatRelativeTime } from '@/lib/utils'
 
 const mockDetections = [
-  { id: 'det-001', mediaUrl: 'https://example.com/img1.jpg', location: { lat: 28.6139, lng: 77.209 }, status: 'pending', confidence: 0.94, potholeCount: 2, createdAt: new Date(Date.now() - 1000 * 60 * 30) },
-  { id: 'det-002', mediaUrl: 'https://example.com/img2.jpg', location: { lat: 28.6189, lng: 77.214 }, status: 'pending', confidence: 0.87, potholeCount: 1, createdAt: new Date(Date.now() - 1000 * 60 * 60) },
-  { id: 'det-003', mediaUrl: 'https://example.com/img3.jpg', location: { lat: 28.6239, lng: 77.219 }, status: 'approved', confidence: 0.76, potholeCount: 3, createdAt: new Date(Date.now() - 1000 * 60 * 120) },
-  { id: 'det-004', mediaUrl: 'https://example.com/img4.jpg', location: { lat: 28.6339, lng: 77.224 }, status: 'rejected', confidence: 0.45, potholeCount: 0, createdAt: new Date(Date.now() - 1000 * 60 * 180) },
+  { id: 'det-001', mediaUrl: 'https://example.com/img1.jpg', location: { lat: 21.2514, lng: 81.6296 }, status: 'pending', confidence: 0.94, potholeCount: 2, createdAt: new Date(Date.now() - 1000 * 60 * 30) },
+  { id: 'det-002', mediaUrl: 'https://example.com/img2.jpg', location: { lat: 21.2564, lng: 81.6346 }, status: 'pending', confidence: 0.87, potholeCount: 1, createdAt: new Date(Date.now() - 1000 * 60 * 60) },
+  { id: 'det-003', mediaUrl: 'https://example.com/img3.jpg', location: { lat: 21.2539, lng: 81.6190 }, status: 'approved', confidence: 0.76, potholeCount: 3, createdAt: new Date(Date.now() - 1000 * 60 * 120) },
+  { id: 'det-004', mediaUrl: 'https://example.com/img4.jpg', location: { lat: 21.2639, lng: 81.6240 }, status: 'rejected', confidence: 0.45, potholeCount: 0, createdAt: new Date(Date.now() - 1000 * 60 * 180) },
 ]
 
 const statusConfig = {

@@ -25,23 +25,23 @@ const db = getFirestore(app)
 
 // Sample data
 const jurisdictions = [
-  { code: 'DL-Central', name: 'Central Delhi', type: 'zone', center: { lat: 28.6289, lng: 77.2195 }, parentId: 'delhi', departmentId: 'PWD-DL', isActive: true },
-  { code: 'DL-North', name: 'North Delhi', type: 'zone', center: { lat: 28.7189, lng: 77.2067 }, parentId: 'delhi', departmentId: 'PWD-DL', isActive: true },
-  { code: 'DL-South', name: 'South Delhi', type: 'zone', center: { lat: 28.5355, lng: 77.2500 }, parentId: 'delhi', departmentId: 'PWD-DL', isActive: true },
-  { code: 'DL-East', name: 'East Delhi', type: 'zone', center: { lat: 28.6220, lng: 77.2880 }, parentId: 'delhi', departmentId: 'PWD-DL', isActive: true },
-  { code: 'DL-West', name: 'West Delhi', type: 'zone', center: { lat: 28.6519, lng: 77.0974 }, parentId: 'delhi', departmentId: 'PWD-DL', isActive: true },
+  { code: 'CG-Central', name: 'Central Raipur', type: 'zone', center: { lat: 21.2514, lng: 81.6296 }, parentId: 'chhattisgarh', departmentId: 'PWD-CG', isActive: true },
+  { code: 'CG-North', name: 'North Raipur', type: 'zone', center: { lat: 21.2800, lng: 81.6200 }, parentId: 'chhattisgarh', departmentId: 'PWD-CG', isActive: true },
+  { code: 'CG-South', name: 'South Raipur', type: 'zone', center: { lat: 21.2200, lng: 81.6400 }, parentId: 'chhattisgarh', departmentId: 'PWD-CG', isActive: true },
+  { code: 'CG-East', name: 'East Raipur', type: 'zone', center: { lat: 21.2600, lng: 81.6800 }, parentId: 'chhattisgarh', departmentId: 'PWD-CG', isActive: true },
+  { code: 'CG-West', name: 'West Raipur', type: 'zone', center: { lat: 21.2400, lng: 81.5800 }, parentId: 'chhattisgarh', departmentId: 'PWD-CG', isActive: true },
 ]
 
 const departments = [
-  { code: 'PWD-DL', name: 'Public Works Department', jurisdictionId: 'delhi', contactEmail: 'pwd-delhi@gov.in', contactPhone: '+91-11-23456789', isActive: true },
+  { code: 'PWD-CG', name: 'Public Works Department', jurisdictionId: 'chhattisgarh', contactEmail: 'pwd-cg@gov.in', contactPhone: '+91-771-2225678', isActive: true },
 ]
 
 const potholes = [
-  { id: 'pothole-0001', lat: 28.6139, lng: 77.209, severity: 'critical', confidence: 0.94, status: 'pending', jurisdictionId: 'DL-Central', address: 'MG Road, Connaught Place', description: 'Large pothole causing traffic disruption' },
-  { id: 'pothole-0002', lat: 28.6189, lng: 77.214, severity: 'high', confidence: 0.87, status: 'verified', jurisdictionId: 'DL-Central', address: 'Barakhamba Road', description: 'Multiple potholes near metro station' },
-  { id: 'pothole-0003', lat: 28.6239, lng: 77.219, severity: 'medium', confidence: 0.76, status: 'in_progress', jurisdictionId: 'DL-Central', address: 'Janpath', description: 'Road damage reported by citizen' },
-  { id: 'pothole-0004', lat: 28.6339, lng: 77.224, severity: 'low', confidence: 0.68, status: 'resolved', jurisdictionId: 'DL-Central', address: 'Sansad Marg', description: 'Minor road damage, recently repaired' },
-  { id: 'pothole-0005', lat: 28.6289, lng: 77.204, severity: 'critical', confidence: 0.92, status: 'pending', jurisdictionId: 'DL-Central', address: 'Parliament Street', description: 'Deep pothole near government building' },
+  { id: 'pothole-0001', lat: 21.2514, lng: 81.6296, severity: 'critical', confidence: 0.94, status: 'pending', jurisdictionId: 'CG-Central', address: 'MG Road, Raipur', description: 'Large pothole causing traffic disruption' },
+  { id: 'pothole-0002', lat: 21.2564, lng: 81.6346, severity: 'high', confidence: 0.87, status: 'verified', jurisdictionId: 'CG-Central', address: 'GE Road', description: 'Multiple potholes near railway station' },
+  { id: 'pothole-0003', lat: 21.2539, lng: 81.6190, severity: 'medium', confidence: 0.76, status: 'in_progress', jurisdictionId: 'CG-Central', address: 'Shankar Nagar Road', description: 'Road damage reported by citizen' },
+  { id: 'pothole-0004', lat: 21.2639, lng: 81.6240, severity: 'low', confidence: 0.68, status: 'resolved', jurisdictionId: 'CG-Central', address: 'Pandri Road', description: 'Minor road damage, recently repaired' },
+  { id: 'pothole-0005', lat: 21.2589, lng: 81.6040, severity: 'critical', confidence: 0.92, status: 'pending', jurisdictionId: 'CG-Central', address: 'Telibandha Road', description: 'Deep pothole near commercial area' },
 ]
 
 type StepStatus = 'pending' | 'loading' | 'success' | 'error'
